@@ -16,7 +16,7 @@ def modify(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--lib_path',default='site-packages/gym/envs/mujoco/assets')
+    parser.add_argument('--lib_path',default='gym/envs/mujoco/assets')
     parser.add_argument('--local_path',default='./assets')
     parser.add_argument('--env',default='half_cheetah')
     parser.add_argument('--phy',default='3leg')

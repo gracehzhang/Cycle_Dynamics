@@ -42,6 +42,7 @@ def get_options():
     parser.add_argument('--lambda_Gcyc', default=30., type=float)
     parser.add_argument('--lambda_F', default=100., type=float)
     parser.add_argument('--init_start', default=True, type=bool)
+    parser.add_argument('--seed', default=0, type=int)
 
     args = parser.parse_args()
 

@@ -62,7 +62,7 @@ class TD3(object):
         data = np.load(mean_std_path)
         mean = torch.tensor(data.mean(0)).float().cuda()
         std = torch.tensor(data.std(0)).float().cuda()
-        std[(abs(std<0.1))] = 1
+        std[(abs((std<0.1).type(torch.uint8)))] = 1
         return mean,std
 
 
@@ -75,6 +75,7 @@ class CrossPolicy:
         self.state_dim = opt.state_dim1
         self.action_dim = opt.action_dim1
         self.max_action = 1
+        print(self.env_name, self.state_dim, self.action_dim)
         self.policy = TD3(self.policy_path,
                           self.state_dim,
                           self.action_dim,

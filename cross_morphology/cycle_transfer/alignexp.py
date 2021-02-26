@@ -19,7 +19,7 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-setup_seed(0)
+# setup_seed(0)
 
 
 def add_errors(model,display):
@@ -32,6 +32,7 @@ def add_errors(model,display):
 
 
 def train(args):
+    setup_seed(args.seed)
     txt_logs, img_logs, weight_logs = init_logs(args)
     data_agent = CycleData(args)
     model = CycleGANModel(args)
@@ -41,7 +42,7 @@ def train(args):
                         axmodel=model.net_action_G_A,
                         eval_episodes=10)
 
-    best_reward = 0
+    best_reward = -1000
     end_id = 0
     for iteration in range(3):
 
@@ -77,6 +78,8 @@ def train(args):
                     best_reward = reward
                     model.save(weight_logs)
                 print('best_reward:{:.1f}  cur_reward:{:.1f}'.format(best_reward,reward))
+                txt_logs.write('best_reward:{:.1f}  cur_reward:{:.1f}\n'.format(best_reward, reward))
+                txt_logs.flush()
 
         args.init_start = False
         args.lr_Gx = 0
@@ -112,6 +115,8 @@ def train(args):
                     model.save(weight_logs)
 
                 print('best_reward:{:.1f}  cur_reward:{:.1f}'.format(best_reward,reward))
+                txt_logs.write('best_reward:{:.1f}  cur_reward:{:.1f}\n'.format(best_reward, reward))
+                txt_logs.flush()
 
 
 def test(args):
@@ -125,13 +130,14 @@ def test(args):
     model.load(weight_logs)
     model.update(args)
 
-    model.cross_policy.eval_policy(
+    reward = model.cross_policy.eval_policy(
         gxmodel=model.netG_B,
         axmodel=model.net_action_G_A,
         # imgpath=img_logs,
-        eval_episodes=10)
+        eval_episodes=50)
 
-
+    txt_logs.write('Final Evaluation: {}\n'.format(reward))
+    txt_logs.flush()
 
 if __name__ == '__main__':
     args = get_options()
@@ -151,8 +157,8 @@ if __name__ == '__main__':
 
     train(args)
     args.istrain = False
-    with torch.no_grad():
-        test(args)
+    # with torch.no_grad():
+    test(args)
 
 
     # args.env = 'Swimmer-v2'

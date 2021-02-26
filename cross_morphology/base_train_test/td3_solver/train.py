@@ -3,148 +3,178 @@ import torch
 import gym
 import argparse
 import os
+import copy
+#import sys
+#sys.path.insert(1, '/home/grace/sim2real')
 
 import utils
 import TD3
+# from s2r_method.s2r_utils.env import make_s2r_env
+from env_utils import SawyerECWrapper
 
 def safe_path(path):
-	if not os.path.exists(path):
-		os.mkdir(path)
-	return path
+        if not os.path.exists(path):
+                os.mkdir(path)
+        return path
 
 # Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment
 def eval_policy(policy, env_name, seed, eval_episodes=10):
-	eval_env = gym.make(env_name)
-	eval_env.seed(seed + 100)
+        eval_env = gym.make(env_name)
+        if "SawyerPush" in args.env:
+            eval_env = SawyerECWrapper(eval_env, args.env)
+            eval_env._max_episode_steps = 70
+        eval_env.seed(seed + 100)
 
-	avg_reward = 0.
-	for _ in range(eval_episodes):
-		state, done = eval_env.reset(), False
-		while not done:
-			action = policy.select_action(np.array(state))
-			state, reward, done, _ = eval_env.step(action)
-			avg_reward += reward
+        avg_reward = 0.
+        for _ in range(eval_episodes):
+                state, done = eval_env.reset(), False
+                while not done:
+                        action = policy.select_action(np.array(state))
+                        state, reward, done, _ = eval_env.step(action)
+                        avg_reward += reward
 
-	avg_reward /= eval_episodes
+        avg_reward /= eval_episodes
 
-	print("---------------------------------------")
-	print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
-	print("---------------------------------------")
-	return avg_reward
+        print("---------------------------------------")
+        print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
+        print("---------------------------------------")
+        return avg_reward
 
 def main(args):
-	file_name = f"{args.policy}_{args.env}_{args.seed}"
-	print("---------------------------------------")
-	print(f"Policy: {args.policy}, Env: {args.env}, Seed: {args.seed}")
-	print("---------------------------------------")
+        file_name = f"{args.policy}_{args.env}_{args.seed}"
+        print("---------------------------------------")
+        print(f"Policy: {args.policy}, Env: {args.env}, Seed: {args.seed}")
+        print("---------------------------------------")
 
-	log_path = safe_path(os.path.join(args.log_root, '{}_base'.format(args.env)))
-	result_path = safe_path(os.path.join(log_path, 'results'))
-	model_path = safe_path(os.path.join(log_path, 'models'))
+        log_path = safe_path(os.path.join(args.log_root, '{}_base'.format(args.env)))
+        result_path = safe_path(os.path.join(log_path, 'results'))
+        model_path = safe_path(os.path.join(log_path, 'models'))
+        
+        '''
+        ### s2r hacks
+        s2r_parser = argparse.ArgumentParser()
+        s2r_parser.add_argument("--encoder_type", default="mlp")
+        s2r_parser.add_argument("--end_effector", default=True)
+        s2r_parser.add_argument("--screen_width", type=int, default=480)
+        s2r_parser.add_argument("--screen_height", type=int, default=480)
+        s2r_parser.add_argument("--action_repeat", type=int, default=1)
+        s2r_parser.add_argument("--puck_friction", type=float, default=2.0)
+        s2r_parser.add_argument("--puck_mass", type=float, default=0.01)
+        s2r_parser.add_argument("--unity",  default=False)
+        s2r_parser.add_argument("--unity_editor", default=False)
+        s2r_parser.add_argument("--virtual_display",  default=None)
+        s2r_parser.add_argument("--port", default=1050)
+        s2r_parser.add_argument("--absorbing_state", default=False)
+        s2r_parser.add_argument("--dr", default=False)
+        s2r_parser.add_argument("--env", default=None)
+        s2r_args = s2r_parser.parse_args()
+        import ipdb;ipdb.set_trace()
+        env = make_s2r_env(args.env, s2r_args, env_type="real")
+        '''
+        env = gym.make(args.env)
+        if "SawyerPush" in args.env:
+            env = SawyerECWrapper(env, args.env)
+            env._max_episode_steps = 70
+        # Set seeds
+        env.seed(args.seed)
+        torch.manual_seed(args.seed)
+        np.random.seed(args.seed)
 
-	env = gym.make(args.env)
+        state_dim = env.observation_space.shape[0]
+        action_dim = env.action_space.shape[0]
+        max_action = float(env.action_space.high[0])
 
-	# Set seeds
-	env.seed(args.seed)
-	torch.manual_seed(args.seed)
-	np.random.seed(args.seed)
+        kwargs = {
+                "state_dim": state_dim,
+                "action_dim": action_dim,
+                "max_action": max_action,
+                "discount": args.discount,
+                "tau": args.tau,
+        }
 
-	state_dim = env.observation_space.shape[0]
-	action_dim = env.action_space.shape[0]
-	max_action = float(env.action_space.high[0])
+        # Initialize policy
+        if args.policy == "TD3":
+                # Target policy smoothing is scaled wrt the action scale
+                kwargs["policy_noise"] = args.policy_noise * max_action
+                kwargs["noise_clip"] = args.noise_clip * max_action
+                kwargs["policy_freq"] = args.policy_freq
+                policy = TD3.TD3(**kwargs)
 
-	kwargs = {
-		"state_dim": state_dim,
-		"action_dim": action_dim,
-		"max_action": max_action,
-		"discount": args.discount,
-		"tau": args.tau,
-	}
+        replay_buffer = utils.ReplayBuffer(state_dim, action_dim)
 
-	# Initialize policy
-	if args.policy == "TD3":
-		# Target policy smoothing is scaled wrt the action scale
-		kwargs["policy_noise"] = args.policy_noise * max_action
-		kwargs["noise_clip"] = args.noise_clip * max_action
-		kwargs["policy_freq"] = args.policy_freq
-		policy = TD3.TD3(**kwargs)
+        # Evaluate untrained policy
+        evaluations = [eval_policy(policy, args.env, args.seed)]
 
-	replay_buffer = utils.ReplayBuffer(state_dim, action_dim)
+        state, done = env.reset(), False
+        episode_reward = 0
+        episode_timesteps = 0
+        episode_num = 0
 
-	# Evaluate untrained policy
-	evaluations = [eval_policy(policy, args.env, args.seed)]
+        for t in range(int(args.max_timesteps)):
 
-	state, done = env.reset(), False
-	episode_reward = 0
-	episode_timesteps = 0
-	episode_num = 0
+                episode_timesteps += 1
 
-	for t in range(int(args.max_timesteps)):
+                # Select action randomly or according to policy
+                if t < args.start_timesteps:
+                        action = env.action_space.sample()
+                else:
+                        action = (
+                                        policy.select_action(np.array(state))
+                                        + np.random.normal(0, max_action * args.expl_noise, size=action_dim)
+                        ).clip(-max_action, max_action)
 
-		episode_timesteps += 1
+                # Perform action
+                next_state, reward, done, _ = env.step(action)
+                done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
 
-		# Select action randomly or according to policy
-		if t < args.start_timesteps:
-			action = env.action_space.sample()
-		else:
-			action = (
-					policy.select_action(np.array(state))
-					+ np.random.normal(0, max_action * args.expl_noise, size=action_dim)
-			).clip(-max_action, max_action)
+                # Store data in replay buffer
+                replay_buffer.add(state, action, next_state, reward, done_bool)
 
-		# Perform action
-		next_state, reward, done, _ = env.step(action)
-		done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
+                state = next_state
+                episode_reward += reward
 
-		# Store data in replay buffer
-		replay_buffer.add(state, action, next_state, reward, done_bool)
+                # Train agent after collecting sufficient data
+                if t >= args.start_timesteps:
+                        policy.train(replay_buffer, args.batch_size)
 
-		state = next_state
-		episode_reward += reward
+                if done:
+                        # +1 to account for 0 indexing. +0 on ep_timesteps since it will increment +1 even if done=True
+                        print(
+                                f"Total T: {t + 1} Episode Num: {episode_num + 1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
+                        # Reset environment
+                        state, done = env.reset(), False
+                        episode_reward = 0
+                        episode_timesteps = 0
+                        episode_num += 1
 
-		# Train agent after collecting sufficient data
-		if t >= args.start_timesteps:
-			policy.train(replay_buffer, args.batch_size)
-
-		if done:
-			# +1 to account for 0 indexing. +0 on ep_timesteps since it will increment +1 even if done=True
-			print(
-				f"Total T: {t + 1} Episode Num: {episode_num + 1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
-			# Reset environment
-			state, done = env.reset(), False
-			episode_reward = 0
-			episode_timesteps = 0
-			episode_num += 1
-
-		# Evaluate episode
-		if (t + 1) % args.eval_freq == 0:
-			evaluations.append(eval_policy(policy, args.env, args.seed))
-			np.save(os.path.join(result_path, '{}'.format(file_name)), evaluations)
-			if args.save_model: policy.save(os.path.join(model_path, '{}'.format(file_name)))
+                # Evaluate episode
+                if (t + 1) % args.eval_freq == 0:
+                        evaluations.append(eval_policy(policy, args.env, args.seed))
+                        np.save(os.path.join(result_path, '{}'.format(file_name)), evaluations)
+                        if args.save_model: policy.save(os.path.join(model_path, '{}'.format(file_name)))
 
 
 
 if __name__ == "__main__":
-	parser = argparse.ArgumentParser()
-	parser.add_argument("--policy", default="TD3")                  # Policy name (TD3, DDPG or OurDDPG)
-	parser.add_argument("--env", default="HalfCheetah-v2")          # OpenAI gym environment name
-	parser.add_argument("--seed", default=0, type=int)              # Sets Gym, PyTorch and Numpy seeds
-	parser.add_argument("--start_timesteps", default=25e3, type=int)# Time steps initial random policy is used
-	parser.add_argument("--eval_freq", default=5e3, type=int)       # How often (time steps) we evaluate
-	parser.add_argument("--max_timesteps", default=1.7e5, type=int)   # Max time steps to run environment
-	parser.add_argument("--expl_noise", default=0.1)                # Std of Gaussian exploration noise
-	parser.add_argument("--batch_size", default=256, type=int)      # Batch size for both actor and critic
-	parser.add_argument("--discount", default=0.99)                 # Discount factor
-	parser.add_argument("--tau", default=0.005)                     # Target network update rate
-	parser.add_argument("--policy_noise", default=0.2)              # Noise added to target policy during critic update
-	parser.add_argument("--noise_clip", default=0.5)                # Range to clip target policy noise
-	parser.add_argument("--policy_freq", default=2, type=int)       # Frequency of delayed policy updates
-	parser.add_argument("--save_model", default=True)               # Save model and optimizer parameters
-	parser.add_argument("--load_model", default="")                 # Model load file name, "" doesn't load, "default" uses file_name
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--policy", default="TD3")                  # Policy name (TD3, DDPG or OurDDPG)
+        parser.add_argument("--env", default="HalfCheetah-v2")          # OpenAI gym environment name
+        parser.add_argument("--seed", default=0, type=int)              # Sets Gym, PyTorch and Numpy seeds
+        parser.add_argument("--start_timesteps", default=25e3, type=int)# Time steps initial random policy is used
+        parser.add_argument("--eval_freq", default=5e3, type=int)       # How often (time steps) we evaluate
+        parser.add_argument("--max_timesteps", default=1.7e5, type=int)   # Max time steps to run environment
+        parser.add_argument("--expl_noise", default=0.1)                # Std of Gaussian exploration noise
+        parser.add_argument("--batch_size", default=256, type=int)      # Batch size for both actor and critic
+        parser.add_argument("--discount", default=0.99)                 # Discount factor
+        parser.add_argument("--tau", default=0.005)                     # Target network update rate
+        parser.add_argument("--policy_noise", default=0.2)              # Noise added to target policy during critic update
+        parser.add_argument("--noise_clip", default=0.5)                # Range to clip target policy noise
+        parser.add_argument("--policy_freq", default=2, type=int)       # Frequency of delayed policy updates
+        parser.add_argument("--save_model", default=True)               # Save model and optimizer parameters
+        parser.add_argument("--load_model", default="")                 # Model load file name, "" doesn't load, "default" uses file_name
 
-	parser.add_argument("--log_root", default="../../../../logs/cross_morphology")
-	args = parser.parse_args()
-
-	main(args)
-
+        parser.add_argument("--log_root", default="../../../../logs/cross_morphology")
+        args = parser.parse_args()
+        
+        main(args)

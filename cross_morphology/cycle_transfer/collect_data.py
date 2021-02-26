@@ -10,7 +10,6 @@ from PIL import Image
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 def safe_path(path):
     if not os.path.exists(path):
         os.mkdir(path)
@@ -66,7 +65,9 @@ class CycleData:
         self.episode_n = opt.episode_n
         self.policy_path = os.path.join(opt.log_root,
                         '{}_base/models/TD3_{}_0_actor'.format(opt.env,opt.env))
-        # self.policy = TD3(self.policy_path,self.state_dim,self.action_dim,self.max_action)
+        if opt.load_policy != "":
+            print(self.policy_path)
+            self.policy = TD3(opt.load_policy,self.state_dim,self.action_dim,self.max_action)
         self.setup(opt)
         self.create_data()
         print('----------- Dataset initialized ---------------')
@@ -80,6 +81,7 @@ class CycleData:
 
     def create_data(self):
         self.reset_buffer()
+        total_samples = 0
         for i_episode in range(self.episode_n):
             observation, done, t = self.env.reset(), False, 0
             self.add_observation(observation)
@@ -89,7 +91,10 @@ class CycleData:
             # path = os.path.join(episode_path, 'img_{}_{}.jpg'.format(i_episode, 0))
             # self.check_and_save(path)
             while not done:
-                action = self.env.action_space.sample()
+                if self.opt.load_policy != "":
+                    action = self.policy.select_action(observation)
+                else:
+                    action = self.env.action_space.sample()
                 observation, reward, done, info = self.env.step(action)
                 self.add_action(action)
                 self.add_observation(observation)
@@ -100,9 +105,10 @@ class CycleData:
 
                 if done:
                     print("Episode {} finished after {} timesteps".format(i_episode,t))
+                    total_samples += t
                     break
             self.merge_buffer()
-
+        print("{} total samples collected".format(total_samples))
         self.collect_data()
 
     def check_and_save(self,path):
@@ -163,6 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_type', type=str, default='base', help='data type')
     parser.add_argument('--data_id', type=int, default=1, help='data id')
     parser.add_argument('--episode_n', type=int, default=1000, help='episode number')
+    parser.add_argument('--load_policy', type=str, default="")
     opt = parser.parse_args()
 
     dataset = CycleData(opt)

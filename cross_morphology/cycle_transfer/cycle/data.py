@@ -17,6 +17,7 @@ class CycleData:
         print('-----------------------------------------------\n')
         self.sample_n1 = self.data1[0].shape[0]
         self.sample_n2 = self.data2[0].shape[0]
+        print(self.sample_n1, self.sample_n2)
 
     def sample(self, batch_size=32):
         id1 = random.sample(range(self.sample_n1), batch_size)
