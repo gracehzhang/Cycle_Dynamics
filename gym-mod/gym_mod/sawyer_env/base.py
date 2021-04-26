@@ -22,6 +22,9 @@ from ..unity_interface import UnityInterface
 
 np.set_printoptions(suppress=True)
 
+PORT = 4000
+UNITY_EDITOR = None
+VIRTUAL_DISPLAY = 1
 
 class BaseEnv(gym.Env):
     """ Base class for MuJoCo environments. """
@@ -64,8 +67,9 @@ class BaseEnv(gym.Env):
         self._unity_updated = None
         if kwargs["unity"]:
             self._unity = UnityInterface(
-                kwargs["port"], kwargs["unity_editor"], kwargs["virtual_display"]
+               kwargs["port"], kwargs["unity_editor"], kwargs["virtual_display"]
             )
+            PORT += 1
             self._unity.set_quality(4)
             self._background = background
             self._unity.set_background(self._background)

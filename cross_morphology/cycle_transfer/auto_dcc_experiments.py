@@ -6,14 +6,14 @@ from pathos import multiprocessing
 import traceback
 import time
 
-which_gpus = [0]
-max_worker_num = 2
-envs = ["gym_mod:GymHalfCheetahDM-v0","gym_mod:GymWalkerDM-v0"] #,"gym_mod:GymInvertedPendulumEasy-v0"]
-state_dims = [17,17] #,4]
-action_dims = [6,6] #,1]
+which_gpus = [1]
+max_worker_num = 3
+envs = ["gym_mod:GymFetchReach-v0"] #["gym_mod:GymHalfCheetahDM-v0","gym_mod:GymWalkerDM-v0"] #,"gym_mod:GymInvertedPendulumDM-v0"]
+state_dims = [16] #[17,17] #,4]
+action_dims = [4] #[6,6] #,1]
 seeds = [0,1,2,3,4]
-data_id = 3
-data_type = "dm"
+data_id = 1
+data_type = "easy"
 
 def _init_device_queue(max_worker_num):
     m = Manager()

@@ -17,6 +17,14 @@ def safe_path(path):
                 os.mkdir(path)
         return path
 
+def flatten_state(state):
+    if isinstance(state, dict):
+        state_cat = []
+        for k,v in state.items():
+            state_cat.extend(v)
+        state = state_cat
+    return state
+
 # Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment
 def eval_policy(policy, env_name, seed, eval_episodes=10):
@@ -27,17 +35,22 @@ def eval_policy(policy, env_name, seed, eval_episodes=10):
         eval_env.seed(seed + 100)
 
         avg_reward = 0.
+        success_rate = 0.
         for _ in range(eval_episodes):
                 state, done = eval_env.reset(), False
+                state = flatten_state(state)
                 while not done:
-                        action = policy.select_action(np.array(state))
-                        state, reward, done, _ = eval_env.step(action)
+                        action = policy.select_action(np.array(flatten_state(state)))
+                        state, reward, done, info = eval_env.step(action)
+                        if ("first_success" in info.keys() and info["first_success"]):
+                            success_rate += 1
                         avg_reward += reward
 
         avg_reward /= eval_episodes
+        success_rate /= eval_episodes
 
         print("---------------------------------------")
-        print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
+        print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}, {success_rate:.3f}")
         print("---------------------------------------")
         return avg_reward
 
@@ -81,7 +94,10 @@ def main(args):
         torch.manual_seed(args.seed)
         np.random.seed(args.seed)
 
-        state_dim = env.observation_space.shape[0]
+        try:
+            state_dim = env.observation_space.shape[0]
+        except:
+            state_dim = 16 #env.observation_space.shape[0]
         action_dim = env.action_space.shape[0]
         max_action = float(env.action_space.high[0])
 
@@ -110,9 +126,12 @@ def main(args):
         episode_reward = 0
         episode_timesteps = 0
         episode_num = 0
-
+        success = False
+        reach_reward = 0
+        push_reward = 0
+        cylinder_to_target = 100
         for t in range(int(args.max_timesteps)):
-
+                state = flatten_state(state)
                 episode_timesteps += 1
 
                 # Select action randomly or according to policy
@@ -125,8 +144,16 @@ def main(args):
                         ).clip(-max_action, max_action)
 
                 # Perform action
-                next_state, reward, done, _ = env.step(action)
+                next_state, reward, done, info = env.step(action)
+                next_state = flatten_state(next_state)
                 done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
+
+                if ("first_success" in info.keys() and info["first_success"]):
+                    success = True
+
+                reach_reward += info["reward_reach"]
+                push_reward += info["reward_push"]
+                cylinder_to_target = min(cylinder_to_target, info["cylinder_to_target"])
 
                 # Store data in replay buffer
                 replay_buffer.add(state, action, next_state, reward, done_bool)
@@ -140,11 +167,16 @@ def main(args):
 
                 if done:
                         # +1 to account for 0 indexing. +0 on ep_timesteps since it will increment +1 even if done=True
+                        reach_reward /= episode_timesteps
+                        push_reward /= episode_timesteps
                         print(
-                                f"Total T: {t + 1} Episode Num: {episode_num + 1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
+                                f"Total T: {t + 1} Episode Num: {episode_num + 1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f} Success: {success} Reach Reward: {reach_reward:.3f} Push Reward: {push_reward:.3f} cylinder_to_target: {cylinder_to_target:.3f}")
                         # Reset environment
+                        success = False
                         state, done = env.reset(), False
                         episode_reward = 0
+                        reach_reward, push_reward = 0, 0
+                        cylinder_to_target = 100
                         episode_timesteps = 0
                         episode_num += 1
 
@@ -170,7 +202,7 @@ if __name__ == "__main__":
         parser.add_argument("--tau", default=0.005)                     # Target network update rate
         parser.add_argument("--policy_noise", default=0.2)              # Noise added to target policy during critic update
         parser.add_argument("--noise_clip", default=0.5)                # Range to clip target policy noise
-        parser.add_argument("--policy_freq", default=2, type=int)       # Frequency of delayed policy updates
+        parser.add_argument("--policy_freq", default=1, type=int)       # Frequency of delayed policy updates
         parser.add_argument("--save_model", default=True)               # Save model and optimizer parameters
         parser.add_argument("--load_model", default="")                 # Model load file name, "" doesn't load, "default" uses file_name
 

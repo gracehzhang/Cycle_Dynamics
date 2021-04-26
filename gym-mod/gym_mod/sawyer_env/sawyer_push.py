@@ -67,7 +67,7 @@ class SawyerPushEnv(SawyerEnv):
             reward_reach = -gripper_to_cylinder * reach_multi
             reward_push = -cylinder_to_target * push_multi
             reward += reward_reach + reward_push
-            info = dict(reward_reach=reward_reach, reward_push=reward_push)
+            info = dict(reward_reach=reward_reach, reward_push=reward_push, cylinder_to_target=cylinder_to_target)
         else:
             gripper_to_cylinder = np.linalg.norm(cylinder_pos - gripper_site_pos)
             cylinder_to_target = np.linalg.norm(cylinder_pos[:2] - target_pos[:2])
@@ -77,7 +77,7 @@ class SawyerPushEnv(SawyerEnv):
             reward += reward_push
             info = dict(reward_reach=reward_reach, reward_push=reward_push)
 
-        if cylinder_to_target < 0.0:
+        if cylinder_to_target < 0.06:
             reward += 150.0
             self._success = True
             self._terminal = True
@@ -183,17 +183,21 @@ class SawyerPushZoomEasy(SawyerPushEnv):
         SawyerEnv.__init__(self, "sawyer_push_easy.xml", **kwargs)
         self._get_reference()
         self.sim.model.geom_friction[self.cylinder_geom_id][0] = 2.0 #kwargs["puck_friction"]
-        self.sim.model.body_mass[self.cylinder_body_id] = 0.01 #kwargs["puck_mass"]
+        self.sim.model.body_mass[self.cylinder_body_id] = 0.03 #kwargs["puck_mass"]
         self.sim.set_constants()
 
 class SawyerPushShiftViewZoomBackground(SawyerPushEnv):
     def __init__(self, **kwargs):
         kwargs["camera_name"] = "shiftview2zoom"
         kwargs["unity"] = False
+        kwargs["unity_editor"] = None
+        kwargs["port"] = 4000
+        kwargs["virtual_display"] = "1"
+        #import ipdb; ipdb.set_trace()
         SawyerEnv.__init__(self, "sawyer_push_color.xml", background="Interior", **kwargs)
         self._get_reference()
         self.sim.model.geom_friction[self.cylinder_geom_id][0] = 2.0 #kwargs["puck_friction"]
-        self.sim.model.body_mass[self.cylinder_body_id] = 0.01 #kwargs["puck_mass"]
+        self.sim.model.body_mass[self.cylinder_body_id] = 0.05 #kwargs["puck_mass"]
         self.sim.set_constants()
 
 class SawyerPushColor(SawyerPushEnv):

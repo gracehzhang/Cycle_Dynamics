@@ -19,6 +19,13 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
+def flatten_state(state):
+    if isinstance(state, dict):
+        state_cat = []
+        for k,v in state.items():
+            state_cat.extend(v)
+        state = state_cat
+    return state
 # setup_seed(0)
 
 
@@ -70,15 +77,15 @@ def train(args):
                 model.visual(path)
 
             if (batch_id + 1) % args.eval_gap == 0:
-                reward = model.cross_policy.eval_policy(
+                reward, success_rate=  model.cross_policy.eval_policy(
                     gxmodel=model.netG_B,
                     axmodel=model.net_action_G_A,
                     eval_episodes=args.eval_n)
                 if reward>best_reward:
                     best_reward = reward
                     model.save(weight_logs)
-                print('best_reward:{:.1f}  cur_reward:{:.1f}'.format(best_reward,reward))
-                txt_logs.write('best_reward:{:.1f}  cur_reward:{:.1f}\n'.format(best_reward, reward))
+                print('best_reward:{:.1f}  cur_reward:{:.1f} cur_success:{:.1f}'.format(best_reward,reward,success_rate))
+                txt_logs.write('best_reward:{:.1f}  cur_reward:{:.1f} cur_succes_rate:{:.1f}\n'.format(best_reward, reward, success_rate))
                 txt_logs.flush()
 
         args.init_start = False
@@ -106,7 +113,7 @@ def train(args):
                 model.visual(path)
 
             if (batch_id + 1) % args.eval_gap == 0:
-                reward = model.cross_policy.eval_policy(
+                reward, success_rate = model.cross_policy.eval_policy(
                     gxmodel=model.netG_B,
                     axmodel=model.net_action_G_A,
                     eval_episodes=args.eval_n)
@@ -114,8 +121,8 @@ def train(args):
                     best_reward = reward
                     model.save(weight_logs)
 
-                print('best_reward:{:.1f}  cur_reward:{:.1f}'.format(best_reward,reward))
-                txt_logs.write('best_reward:{:.1f}  cur_reward:{:.1f}\n'.format(best_reward, reward))
+                print('best_reward:{:.1f}  cur_reward:{:.1f} cur_success:{:.1f}'.format(best_reward,reward,success_rate))
+                txt_logs.write('best_reward:{:.1f}  cur_reward:{:.1f} cur_success:{:.1f}\n'.format(best_reward, reward, success_rate))
                 txt_logs.flush()
 
 
@@ -130,13 +137,13 @@ def test(args):
     model.load(weight_logs)
     model.update(args)
 
-    reward = model.cross_policy.eval_policy(
+    reward, success_rate = model.cross_policy.eval_policy(
         gxmodel=model.netG_B,
         axmodel=model.net_action_G_A,
         # imgpath=img_logs,
-        eval_episodes=50)
+        eval_episodes=100)
 
-    txt_logs.write('Final Evaluation: {}\n'.format(reward))
+    txt_logs.write('Final Evaluation: {}, Success Rate: {}\n'.format(reward, success_rate))
     txt_logs.flush()
 
 if __name__ == '__main__':

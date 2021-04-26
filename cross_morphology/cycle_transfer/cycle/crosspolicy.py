@@ -9,6 +9,15 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 from PIL import Image
+from env_utils import SawyerECWrapper
+
+def flatten_state(state):
+    if isinstance(state, dict):
+        state_cat = []
+        for k,v in state.items():
+            state_cat.extend(v)
+        state = state_cat
+    return state
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, max_action):
@@ -52,7 +61,7 @@ class TD3(object):
         state = state * self.std1 + self.mean1
         state = state.cpu().data.numpy()
         action = self.select_action(state)
-        action = axmodel(torch.tensor(action).float().cuda().unsqueeze(0))
+        action = axmodel(torch.tensor(action).float().cuda().unsqueeze(0)).squeeze()
         action = action.cpu().data.numpy()
         return action
 
@@ -82,6 +91,9 @@ class CrossPolicy:
                           self.max_action,
                           self.opt)
         self.env = gym.make(self.env_name)
+        if "SawyerPush" in self.opt.env:
+            self.env = SawyerECWrapper(self.env, opt.env)
+            self.env._max_episode_steps = 70
         self.env.seed(100)
 
     def eval_policy(self,
@@ -93,6 +105,7 @@ class CrossPolicy:
         state_buffer = []
         action_buffer = []
         avg_reward,new_reward = 0.,0.
+        success_rate = 0.
         save_flag = False
         if imgpath is not None:
             if not os.path.exists(imgpath):
@@ -107,13 +120,16 @@ class CrossPolicy:
                     os.mkdir(episode_path)
             count = 0
             while not done:
-                state = np.array(state)
+                state = np.array(flatten_state(state))
                 action = self.policy.select_cross_action(state,gxmodel,axmodel)
-
                 state_buffer.append(state)
                 action_buffer.append(action)
                 state, reward, done, info = eval_env.step(action)
-
+                state = flatten_state(state)
+                if ("first_success" in info.keys() and info["first_success"] == 1):
+                    success_rate += 1
+                elif ("episode_success" in info.keys() and info["episode_success"] == True):
+                    success_rate += 1
                 avg_reward += reward
                 # if self.env_name=='HalfCheetah-v2':
                 #     avg_reward += info['reward_run']
@@ -127,10 +143,11 @@ class CrossPolicy:
                     Image.fromarray(img[::-1, :, :]).save(os.path.join(episode_path, 'img_{}.jpg'.format(count)))
                 count += 1
         avg_reward /= eval_episodes
+        success_rate /= eval_episodes
 
         print("-----------------------------------------------")
-        print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
+        print("Evaluation over {eval_episodes} episodes: {avg_reward:.3f}, {success_rate:.3f}")
         print("-----------------------------------------------")
 
-        return avg_reward
+        return avg_reward, success_rate
 

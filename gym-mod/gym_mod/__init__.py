@@ -5,6 +5,20 @@ from gym.envs.registration import register
 #from gym_mod.dmenvs import dm_walker_s2r
 
 register(
+    id="GymFetchReach-v0",
+    entry_point="gym_mod.gymenvs:GymFetchReachEnv",
+    kwargs={},
+    max_episode_steps=50
+)
+
+register(
+    id="GymFetchReach2-v0",
+    entry_point="gym_mod.gymenvs:GymFetchReachEnv",
+    kwargs={},
+    max_episode_steps=50
+)
+
+register(
     id="SawyerPushShiftViewZoomBackground-v0",
     entry_point="gym_mod.sawyer_env:SawyerPushShiftViewZoomBackground",
     kwargs={},

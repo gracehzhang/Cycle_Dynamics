@@ -9,12 +9,20 @@ from tqdm import tqdm
 from PIL import Image
 import torch.nn as nn
 import torch.nn.functional as F
+from env_utils import SawyerECWrapper
 
 def safe_path(path):
     if not os.path.exists(path):
         os.mkdir(path)
     return path
 
+def flatten_state(state):
+    if isinstance(state, dict):
+        state_cat = []
+        for k,v in state.items():
+            state_cat.extend(v)
+        state = state_cat
+    return state
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, max_action):
@@ -56,10 +64,19 @@ class CycleData:
     def __init__(self, opt):
         self.opt = opt
         self.env = gym.make(opt.env)
+        if "SawyerPush" in self.opt.env:
+            self.env = SawyerECWrapper(self.env, opt.env)
+            self.env._max_episode_steps = 70
         self.env.seed(0)
         random.seed(0)
-        self.state_dim = self.env.observation_space.shape[0]
-        self.action_dim = self.env.action_space.shape[0]
+        try:
+            self.state_dim = self.env.observation_space.shape[0]
+        except:
+            self.state_dim = 16 #self.env.observation_space.shape[0]
+        try:
+            self.action_dim = self.env.action_space.shape[0]
+        except:
+            self.action_dim = 2
         self.max_action = float(self.env.action_space.high[0])
         self.log_root = opt.log_root
         self.episode_n = opt.episode_n
@@ -82,20 +99,24 @@ class CycleData:
     def create_data(self):
         self.reset_buffer()
         total_samples = 0
-        for i_episode in range(self.episode_n):
+        i_episode = 0
+        while total_samples < self.episode_n:
             observation, done, t = self.env.reset(), False, 0
+            observation = flatten_state(observation)
             self.add_observation(observation)
             # episode_path = os.path.join(self.img_path,'episode-{}'.format(i_episode))
             # if not os.path.exists(episode_path):
             #     os.mkdir(episode_path)
             # path = os.path.join(episode_path, 'img_{}_{}.jpg'.format(i_episode, 0))
             # self.check_and_save(path)
+            i_episode += 1
             while not done:
                 if self.opt.load_policy != "":
                     action = self.policy.select_action(observation)
                 else:
                     action = self.env.action_space.sample()
                 observation, reward, done, info = self.env.step(action)
+                observation = flatten_state(observation)
                 self.add_action(action)
                 self.add_observation(observation)
 
