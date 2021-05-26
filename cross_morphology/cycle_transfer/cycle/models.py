@@ -157,7 +157,7 @@ class Fengine:
         lr = 1e-3
         optimizer = torch.optim.Adam(self.fmodel.parameters(), lr=lr)
         loss_fn = nn.L1Loss()
-        now,act,nxt = dataset
+        now,act,nxt,_,_ = dataset
         batch_size = 32
         data_size = int(now.shape[0]/batch_size)
         for epoch in range(10):

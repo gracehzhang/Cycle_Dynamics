@@ -61,6 +61,10 @@ class CycleGANModel():
         print('---------- Networks initialized ---------------')
         print('-----------------------------------------------')
 
+    def sample_action(self, obs):
+        action = self.cross_policy.policy.select_cross_action(obs, gxmodel=self.netG_B, axmodel=self.net_action_G_A)
+        return action
+
     def update(self,opt):
         self.init_start = opt.init_start
         self.net_action_G_A.init_start = opt.init_start

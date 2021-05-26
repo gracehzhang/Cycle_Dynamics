@@ -5,29 +5,31 @@ import argparse
 
 def get_options():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log_root' ,default='../../../logs/cross_morphology',type=str)
+    parser.add_argument('--log_root' ,default='../../logs/cross_morphology',type=str)
     parser.add_argument('--exp_id' ,default=10,type=int)
-    parser.add_argument("--env", default="HalfCheetah-v2")
+    parser.add_argument("--source_env", default="HalfCheetah-v3")
+    parser.add_argument("--env", default="gym_mod:GymHalfCheetahDM-v0")
     parser.add_argument('--data_type1', type=str, default='base', help='data type')
-    parser.add_argument('--data_type2', type=str, default='3leg', help='data type')
+    parser.add_argument('--data_type2', type=str, default='base', help='data type')
     parser.add_argument('--data_id1', type=int, default=1, help='data id')
     parser.add_argument('--data_id2', type=int, default=1, help='data id')
+    parser.add_argument('--iterations', type=int, default=5, help='itations for iteralignexp')
 
     parser.add_argument('--state_dim1' ,default=17 ,type=int)
     parser.add_argument('--action_dim1' ,default=6 ,type=int)
 
-    parser.add_argument('--state_dim2', default=23, type=int)
-    parser.add_argument('--action_dim2', default=9, type=int)
+    parser.add_argument('--state_dim2', default=17, type=int)
+    parser.add_argument('--action_dim2', default=6, type=int)
 
     parser.add_argument('--cut_state1', default=0, type=int)
     parser.add_argument('--cut_state2', default=0, type=int)
 
 
-    parser.add_argument('--episode_n', default=200, type=int)
+    parser.add_argument('--episode_n', default=1000, type=int)
     parser.add_argument('--pair_n' ,default=7000 ,type=int)
     parser.add_argument('--display_gap' ,default=1000 ,type=int)
     parser.add_argument('--eval_gap' ,default=1000 ,type=int)
-    parser.add_argument('--eval_n' ,default=3,type=int)
+    parser.add_argument('--eval_n' ,default=10,type=int)
 
     parser.add_argument('--loss' ,default='l1' ,type=str)
     parser.add_argument('--istrain' ,default=True,type=bool)

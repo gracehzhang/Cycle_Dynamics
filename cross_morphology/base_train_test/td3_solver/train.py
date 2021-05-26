@@ -12,6 +12,9 @@ import TD3
 # from s2r_method.s2r_utils.env import make_s2r_env
 from env_utils import SawyerECWrapper
 
+os.environ["KMP_DUPLICATE_LIB_OK"] = "True"  # for running on macOS
+
+
 def safe_path(path):
         if not os.path.exists(path):
                 os.mkdir(path)
@@ -151,9 +154,9 @@ def main(args):
                 if ("first_success" in info.keys() and info["first_success"]):
                     success = True
 
-                reach_reward += info["reward_reach"]
-                push_reward += info["reward_push"]
-                cylinder_to_target = min(cylinder_to_target, info["cylinder_to_target"])
+                # reach_reward += info["reward_reach"]
+                # push_reward += info["reward_push"]
+                # cylinder_to_target = min(cylinder_to_target, info["cylinder_to_target"])
 
                 # Store data in replay buffer
                 replay_buffer.add(state, action, next_state, reward, done_bool)
@@ -167,10 +170,11 @@ def main(args):
 
                 if done:
                         # +1 to account for 0 indexing. +0 on ep_timesteps since it will increment +1 even if done=True
-                        reach_reward /= episode_timesteps
-                        push_reward /= episode_timesteps
+                        # reach_reward /= episode_timesteps
+                        # push_reward /= episode_timesteps
+                        #  Reach Reward: {reach_reward:.3f} Push Reward: {push_reward:.3f} cylinder_to_target: {cylinder_to_target:.3f}
                         print(
-                                f"Total T: {t + 1} Episode Num: {episode_num + 1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f} Success: {success} Reach Reward: {reach_reward:.3f} Push Reward: {push_reward:.3f} cylinder_to_target: {cylinder_to_target:.3f}")
+                                f"Total T: {t + 1} Episode Num: {episode_num + 1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f} Success: {success}")
                         # Reset environment
                         success = False
                         state, done = env.reset(), False
@@ -206,7 +210,7 @@ if __name__ == "__main__":
         parser.add_argument("--save_model", default=True)               # Save model and optimizer parameters
         parser.add_argument("--load_model", default="")                 # Model load file name, "" doesn't load, "default" uses file_name
 
-        parser.add_argument("--log_root", default="../../../../logs/cross_morphology")
+        parser.add_argument("--log_root", default="../../../logs/cross_morphology")
         args = parser.parse_args()
         
         main(args)

@@ -85,6 +85,7 @@ class CycleData:
         if opt.load_policy != "":
             print(self.policy_path)
             self.policy = TD3(opt.load_policy,self.state_dim,self.action_dim,self.max_action)
+
         self.setup(opt)
         self.create_data()
         print('----------- Dataset initialized ---------------')
@@ -186,7 +187,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='control dataset analyzer')
     parser.add_argument("--env", default="HalfCheetah-v2")
     parser.add_argument("--force", type=bool, default=False)
-    parser.add_argument("--log_root", default="../../../logs/cross_morphology")
+    parser.add_argument("--log_root", default="../../logs/cross_morphology")
     parser.add_argument('--data_type', type=str, default='base', help='data type')
     parser.add_argument('--data_id', type=int, default=1, help='data id')
     parser.add_argument('--episode_n', type=int, default=1000, help='episode number')

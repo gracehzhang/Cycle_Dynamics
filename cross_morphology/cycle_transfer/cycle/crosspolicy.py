@@ -146,7 +146,7 @@ class CrossPolicy:
         success_rate /= eval_episodes
 
         print("-----------------------------------------------")
-        print("Evaluation over {eval_episodes} episodes: {avg_reward:.3f}, {success_rate:.3f}")
+        print("Evaluation over {} episodes: {:.3f}, {:.3f}".format(eval_episodes, avg_reward, success_rate))
         print("-----------------------------------------------")
 
         return avg_reward, success_rate
