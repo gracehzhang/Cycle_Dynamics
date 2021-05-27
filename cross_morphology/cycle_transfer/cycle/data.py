@@ -96,15 +96,18 @@ class IterCycleData:
         self.opt = opt
         self.episode_n = opt.episode_n
         self.log_root = opt.log_root
-        self.env_logs = os.path.join(self.log_root, '{}_data'.format(self.opt.env))
-        self.data_root1 = os.path.join(self.env_logs, '{}_{}'.format(self.opt.data_type1, self.opt.data_id1))
-        self.data_root2 = os.path.join(self.env_logs, '{}_{}'.format(self.opt.data_type2, self.opt.data_id2))
+        self.env_logs1 = os.path.join(self.log_root, '{}_data'.format(self.opt.source_env))
+        self.env_logs2 = os.path.join(self.log_root, '{}_data'.format(self.opt.env))
+        self.data_root1 = os.path.join(self.env_logs1, '{}_{}'.format(self.opt.data_type1, self.opt.data_id1))
+        self.data_root2 = os.path.join(self.env_logs2, '{}_{}'.format(self.opt.data_type2, self.opt.data_id2))
         self.data1 = self.collect(self.data_root1, opt.state_dim1)
         self.data2 = self.collect(self.data_root2, opt.state_dim2)
+        self.finetune = opt.finetune
         print('----------- Dataset initialized ---------------')
         print('-----------------------------------------------\n')
         self.sample_n1 = self.data1[0].shape[0]
         self.sample_n2 = self.data2[0].shape[0]
+        print(self.data_root1, self.data_root2)
         print(self.sample_n1, self.sample_n2)
 
     def sample(self, batch_size=32):
@@ -205,14 +208,24 @@ class IterCycleData:
         nxt_obs = (nxt_obs-mean)/std
 
         if data_i == 1:
-            self.data1[0] = np.concatenate((self.data1[0], now_obs))
-            self.data1[1] = np.concatenate((self.data1[1], action))
-            self.data1[2] = np.concatenate((self.data1[2], nxt_obs))
+            if self.finetune:
+                self.data1[0] = now_obs
+                self.data1[1] = action
+                self.data1[2] = nxt_obs
+            else:
+                self.data1[0] = np.concatenate((self.data1[0], now_obs))
+                self.data1[1] = np.concatenate((self.data1[1], action))
+                self.data1[2] = np.concatenate((self.data1[2], nxt_obs))
             self.sample_n1 = self.data1[0].shape[0]
         elif data_i == 2:
-            self.data2[0] = np.concatenate((self.data2[0], now_obs))
-            self.data2[1] = np.concatenate((self.data2[1], action))
-            self.data2[2] = np.concatenate((self.data2[2], nxt_obs))
+            if self.finetune:
+                self.data2[0] = now_obs
+                self.data2[1] = action
+                self.data2[2] = nxt_obs
+            else:
+                self.data2[0] = np.concatenate((self.data2[0], now_obs))
+                self.data2[1] = np.concatenate((self.data2[1], action))
+                self.data2[2] = np.concatenate((self.data2[2], nxt_obs))
             self.sample_n2 = self.data2[0].shape[0]
 
         return

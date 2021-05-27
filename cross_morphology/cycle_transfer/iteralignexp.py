@@ -40,21 +40,30 @@ def add_errors(model,display):
     return display
 
 def iter_train(opt):
-    data_agent = IterCycleData(args)
+    logs = init_logs(opt)
+    opt.istrain = False
+    eval_logs = init_logs(opt)
+    opt.istrain = True
+
+    data_agent = IterCycleData(opt)
     setup_seed(args.seed)
-    logs = init_logs(args)
-    model = CycleGANModel(args)
+    model = CycleGANModel(opt)
     model.update(opt)
     best_reward = -1000
     for iter in range(opt.iterations):
         # Train
         opt.istrain = True
-        best_reward = train(opt, data_agent, model, logs, iter, best_reward)
+        best_reward = train(opt, data_agent, model, iter, best_reward, logs)
+        if opt.finetune:
+            opt.pair_n = 700
+            opt.display_gap = 100
+            opt.eval_gap = 100
 
         # Test
         opt.istrain = False
+        opt.init_start = False
         with torch.no_grad():
-            test(opt, logs, iter)
+            test(opt, iter, eval_logs)
 
         # Collect Data
 
@@ -71,10 +80,11 @@ def collect_data(opt, data_agent, model):
     data_agent.create_data(opt.env, 2, opt.episode_n, model=model)
 
 
-def train(args, data_agent, model, logs, iter, best_reward):
+def train(args, data_agent, model, iter, best_reward, logs):
     txt_logs, img_logs, weight_logs = logs
     model.fengine.train_statef(data_agent.data1)
     model.cross_policy.eval_policy(
+                        iter,
                         gxmodel=model.netG_B,
                         axmodel=model.net_action_G_A,
                         eval_episodes=10)
@@ -108,6 +118,7 @@ def train(args, data_agent, model, logs, iter, best_reward):
 
             if (batch_id + 1) % args.eval_gap == 0:
                 reward, success_rate=  model.cross_policy.eval_policy(
+                    iter,
                     gxmodel=model.netG_B,
                     axmodel=model.net_action_G_A,
                     eval_episodes=args.eval_n)
@@ -144,6 +155,7 @@ def train(args, data_agent, model, logs, iter, best_reward):
 
             if (batch_id + 1) % args.eval_gap == 0:
                 reward, success_rate = model.cross_policy.eval_policy(
+                    iter,
                     gxmodel=model.netG_B,
                     axmodel=model.net_action_G_A,
                     eval_episodes=args.eval_n)
@@ -157,9 +169,7 @@ def train(args, data_agent, model, logs, iter, best_reward):
 
     return best_reward
 
-def test(args, logs, iter):
-    args.istrain = False
-    args.init_start = False
+def test(args, iter, logs):
     txt_logs, img_logs, weight_logs = logs
     # # data_agent = CycleData(args)
     model = CycleGANModel(args)
@@ -169,9 +179,10 @@ def test(args, logs, iter):
     model.update(args)
 
     reward, success_rate = model.cross_policy.eval_policy(
+        iter,
         gxmodel=model.netG_B,
         axmodel=model.net_action_G_A,
-        # imgpath=img_logs,
+        imgpath=img_logs,
         eval_episodes=100)
 
     txt_logs.write('Iteration: {}, Final Evaluation: {}, Success Rate: {}\n'.format(iter, reward, success_rate))

@@ -311,8 +311,8 @@ class CycleGANModel():
         return item.cpu().data.numpy()
 
     def visual(self,path):
-        gt_data = np.vstack(self.gt_buffer)
-        pred_data = np.vstack(self.pred_buffer)
+        # gt_data = np.vstack(self.gt_buffer)
+        # pred_data = np.vstack(self.pred_buffer)
         # self.show_points(gt_data,pred_data)
         # plt.savefig(path)
         # plt.cla()

@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 from PIL import Image
+import moviepy.editor as mpy
 from env_utils import SawyerECWrapper
 
 def flatten_state(state):
@@ -39,10 +40,11 @@ class TD3(object):
         self.weight_path = policy_path
         self.actor.load_state_dict(torch.load(self.weight_path))
         print('policy weight loaded!')
-        self.env_logs = os.path.join(self.opt.log_root, '{}_data'.format(self.opt.env))
+        self.env_logs1 = os.path.join(self.opt.log_root, '{}_data'.format(self.opt.source_env))
+        self.env_logs2 = os.path.join(self.opt.log_root, '{}_data'.format(self.opt.env))
         self.clip_range = 5
-        self.mean1,self.std1 = self.get_mean_std(opt.data_type1,opt.data_id1)
-        self.mean2,self.std2 = self.get_mean_std(opt.data_type2,opt.data_id2)
+        self.mean1,self.std1 = self.get_mean_std(opt.data_type1,opt.data_id1,self.env_logs1)
+        self.mean2,self.std2 = self.get_mean_std(opt.data_type2,opt.data_id2,self.env_logs2)
 
     def select_action(self, state):
         state = torch.FloatTensor(state.reshape(1, -1)).cuda()
@@ -65,8 +67,8 @@ class TD3(object):
         action = action.cpu().data.numpy()
         return action
 
-    def get_mean_std(self,data_type,data_id):
-        data_path = os.path.join(self.env_logs, '{}_{}'.format(data_type, data_id))
+    def get_mean_std(self,data_type,data_id,env_logs):
+        data_path = os.path.join(env_logs, '{}_{}'.format(data_type, data_id))
         mean_std_path = os.path.join(data_path,'now_state.npy')
         data = np.load(mean_std_path)
         mean = torch.tensor(data.mean(0)).float().cuda()
@@ -97,6 +99,7 @@ class CrossPolicy:
         self.env.seed(100)
 
     def eval_policy(self,
+                    iter,
                     gxmodel=None,
                     axmodel=None,
                     imgpath=None,
@@ -115,9 +118,8 @@ class CrossPolicy:
         for i in tqdm(range(eval_episodes)):
             state, done = eval_env.reset(), False
             if save_flag:
-                episode_path = os.path.join(imgpath,'episode_{}'.format(i))
-                if not os.path.exists(episode_path):
-                    os.mkdir(episode_path)
+                episode_path = os.path.join(imgpath,'iteration_{}_episode_{}.mp4'.format(iter, i))
+                frames = []
             count = 0
             while not done:
                 state = np.array(flatten_state(state))
@@ -139,9 +141,14 @@ class CrossPolicy:
                 #     avg_reward += info['reward_forward']
 
                 if save_flag:
-                    img = eval_env.sim.render(mode='offscreen', camera_name='track', width=256, height=256)
-                    Image.fromarray(img[::-1, :, :]).save(os.path.join(episode_path, 'img_{}.jpg'.format(count)))
+                    img = eval_env.sim.render(mode='offscreen', camera_name='track', width=500, height=500)
+                    frames.append(img[::-1, :, :])
+                    # Image.fromarray(img[::-1, :, :]).save(os.path.join(episode_path, 'img_{}.jpg'.format(count)))
                 count += 1
+            if save_flag:
+                self._save_video(episode_path, frames)
+                if i > 5:
+                    save_flag = False
         avg_reward /= eval_episodes
         success_rate /= eval_episodes
 
@@ -151,3 +158,15 @@ class CrossPolicy:
 
         return avg_reward, success_rate
 
+    def _save_video(self, fname, frames, fps=15.0):
+        """ Saves @frames into a video with file name @fname. """
+
+        def f(t):
+            frame_length = len(frames)
+            new_fps = 1.0 / (1.0 / fps + 1.0 / frame_length)
+            idx = min(int(t * new_fps), frame_length - 1)
+            return frames[idx]
+
+        video = mpy.VideoClip(f, duration=len(frames) / fps + 2)
+
+        video.write_videofile(fname, fps, verbose=False)

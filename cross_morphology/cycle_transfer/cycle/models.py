@@ -148,7 +148,7 @@ class Fengine:
         self.opt = opt
 
     def train_statef(self,dataset):
-        self.env_logs = os.path.join(self.opt.log_root, '{}_data'.format(self.opt.env))
+        self.env_logs = os.path.join(self.opt.log_root, '{}_data'.format(self.opt.source_env))
         self.data_root1 = os.path.join(self.env_logs, '{}_{}'.format(self.opt.data_type1, self.opt.data_id1))
         weight_path = os.path.join(self.data_root1,'forward.pth')
         if self.opt.pretrain_f:

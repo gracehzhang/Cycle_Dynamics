@@ -10,10 +10,11 @@ def get_options():
     parser.add_argument("--source_env", default="HalfCheetah-v3")
     parser.add_argument("--env", default="gym_mod:GymHalfCheetahDM-v0")
     parser.add_argument('--data_type1', type=str, default='base', help='data type')
-    parser.add_argument('--data_type2', type=str, default='base', help='data type')
+    parser.add_argument('--data_type2', type=str, default='dm', help='data type')
     parser.add_argument('--data_id1', type=int, default=1, help='data id')
     parser.add_argument('--data_id2', type=int, default=1, help='data id')
     parser.add_argument('--iterations', type=int, default=5, help='itations for iteralignexp')
+    parser.add_argument('--finetune', type=bool, default=False)
 
     parser.add_argument('--state_dim1' ,default=17 ,type=int)
     parser.add_argument('--action_dim1' ,default=6 ,type=int)
