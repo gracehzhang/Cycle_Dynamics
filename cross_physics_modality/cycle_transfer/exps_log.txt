@@ -1,0 +1,27 @@
+GymHalfCheetahColor --> backwards cheetah
+
+Training:
+
+python train.y --env 'gym_mod:GymInvertedPendulumDM-v0' --max_timesteps=500000
+python train.py --env 'gym_mod:SawyerPushZoom-v0'
+
+Data Collection:
+
+python collect_data.py --env 'gym_mod:GymInvertedPendulumDM-v0' --data_type 'base' --data_id 1 --episode_n 1000
+--load_policy '../../../logs/cross_morphology/gym_mod:GymWalkerBackwards-v0_base/models/TD3_gym_mod:GymWalkerBackwards-v0_0_actor'
+../../../logs/cross_morphology/gym_mod:GymHalfCheetahColor-v0_base/models/TD3_gym_mod:GymHalfCheetahColor-v0_0_actor
+../../../logs/cross_morphology/gym_mod:GymHalfCheetahDM-v0_base/models/TD3_gym_mod:GymHalfCheetahDM-v0_0_actor
+../../../logs/cross_morphology/gym_mod:GymWalkerDM-v0_base/models/TD3_gym_mod:GymWalkerDM-v0_0_actor
+
+DCC:
+
+python alignexp.py --data_type1 'base' --data_id1 2 --data_type2 'dm' --data_id2 2 --seed 0 --env 'gym_mod:GymHalfCheetahDM-v0' --state_dim1=17 --action_dim1=6 --state_dim2=17 --action_dim2=6
+
+python alignexp.py --data_type1 'base' --data_id1 1 --data_type2 'dm' --data_id2 1  --seed 0 --env 'gym_mod:GymWalkerDM-v0' --state_dim1=17 --action_dim1=6 --state_dim2=17 --action_dim2=6
+
+data_id 1: random
+data_id 2: backwards
+data_id 3: forwards
+
+data_type1: 'base'
+data_type2: 'dm'
