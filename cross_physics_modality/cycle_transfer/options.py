@@ -14,7 +14,7 @@ def get_options():
     parser.add_argument('--data_id1', type=int, default=1, help='data id')
     parser.add_argument('--data_id2', type=int, default=1, help='data id')
     parser.add_argument('--iterations', type=int, default=5, help='iterations for iteralignexp')
-    parser.add_argument('--finetune', type=bool, default=False)
+    parser.add_argument('--finetune', type=bool, default=True)
 
     parser.add_argument('--state_dim1' ,default=17 ,type=int)
     parser.add_argument('--action_dim1' ,default=6 ,type=int)
@@ -27,13 +27,13 @@ def get_options():
 
     parser.add_argument('--clip_range', type=int, default=5, help='action dimension')
     parser.add_argument('--stack_n', type=int, default=3, help='action dimension')
-    parser.add_argument('--img_size', type=int, default=256, help='action dimension')
+    parser.add_argument('--img_size', type=int, default=100, help='action dimension')
 
     parser.add_argument('--episode_n', default=1000, type=int)
     parser.add_argument('--pair_n' ,default=7000 ,type=int)
     parser.add_argument('--display_gap' ,default=1000 ,type=int)
     parser.add_argument('--eval_gap' ,default=1000 ,type=int)
-    parser.add_argument('--eval_n' ,default=3,type=int)
+    parser.add_argument('--eval_n' ,default=10,type=int)
 
     parser.add_argument('--loss' ,default='l1' ,type=str)
     parser.add_argument('--istrain' ,default=True,type=bool)

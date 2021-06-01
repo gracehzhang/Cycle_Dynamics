@@ -15,11 +15,6 @@ class GymInvertedPendulumWeight(InvertedPendulumEnv):
         mujoco_env.MujocoEnv.__init__(self, model_path, 2)
 
 
-class GymHalfCheetahWeight(HalfCheetahEnv):
-    def __init__(self):
-        model_path = os.path.join(os.path.dirname(__file__), "assets/half_cheetah_weight.xml")
-        super().__init__(xml_file=model_path)
-
 class GymHopperWeight(HopperEnv):
     def __init__(self):
         model_path = os.path.join(os.path.dirname(__file__), "assets/hopper_weight.xml")

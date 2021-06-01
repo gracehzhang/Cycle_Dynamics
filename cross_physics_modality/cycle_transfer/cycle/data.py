@@ -148,8 +148,8 @@ class IterCycleData:
         for i in id2:
             img_now.append(torch.stack(self.data2[0][i:i+self.stack_n]))
             img_nxt.append(torch.stack(self.data2[2][i:i+self.stack_n]))
-        img_now = torch.stack(img_now,0)
-        img_nxt = torch.stack(img_nxt,0)
+        img_now = torch.stack(img_now,0).numpy()
+        img_nxt = torch.stack(img_nxt,0).numpy()
 
         sample2 = [img_now, self.data2[1][id2], img_nxt]
 
@@ -158,9 +158,7 @@ class IterCycleData:
     def collect(self, data_folder,state_dim,img=False):
         if img:
             img_path = os.path.join(data_folder, 'imgs')
-            imgs = self.get_imgs(img_path)
-            now_obs = imgs[:-1]
-            nxt_obs = imgs[1:]
+            now_obs, nxt_obs = self.get_imgs(img_path)
             mean = None
             std = None
         else:
@@ -177,23 +175,26 @@ class IterCycleData:
 
         act_path = os.path.join(data_folder, 'action.npy')
         action = np.load(act_path)
-
+        
         return [now_obs, action, nxt_obs, mean, std]
 
     def get_imgs(self,img_path):
         episode_list = os.listdir(img_path)
         episode_list = sorted(episode_list,key=lambda x:int(x.split('-')[1]))
-        imglist = []
+        now_img, nxt_img = [], []
         for dir in episode_list:
             episode_path = os.path.join(img_path,dir)
             tmp = os.listdir(episode_path)
             tmp = sorted(tmp,key=lambda x:int(x.split('_')[-1].split('.')[0]))
             tmp = [os.path.join(episode_path,x) for x in tmp]
-
+            
+            imglist = []
             for imgpath in tmp:
                 imglist.append(self.read_img(imgpath))
-
-        return imglist
+            now_img.extend(imglist[:-1])
+            nxt_img.extend(imglist[1:])
+        
+        return now_img, nxt_img
 
     def create_data(self, env, data_i, episode_n, img=False, model=None, policy=None):
         env = gym.make(env)
@@ -213,7 +214,11 @@ class IterCycleData:
         while total_samples < episode_n:
             observation, done, t = env.reset(), False, 0
             observation = flatten_state(observation)
-            self.add_observation(observation, img)
+            if img:
+                img_obs = env.sim.render(mode='offscreen', camera_name='track', width=100, height=100, depth=False)
+                self.add_observation(img_obs, img)
+            else:
+                self.add_observation(observation, img)
             # episode_path = os.path.join(self.img_path,'episode-{}'.format(i_episode))
             # if not os.path.exists(episode_path):
             #     os.mkdir(episode_path)
@@ -224,12 +229,19 @@ class IterCycleData:
                 if policy is not None:
                     action = policy.select_action(observation)
                 elif model is not None:
-                    action = model.sample_action(observation)
+                    if img:
+                        action = model.sample_action(img_obs)
+                    else:
+                        action = model.sample_action(observation)
                 observation, reward, done, info = env.step(action)
                 observation = flatten_state(observation)
+                if img:
+                    img_obs = env.sim.render(mode='offscreen', camera_name='track', width=100, height=100, depth=False)
+                    self.add_observation(img_obs, img)
+                else:
+                    self.add_observation(observation, img)
 
                 self.add_action(action)
-                self.add_observation(observation, img)
 
                 # path = os.path.join(episode_path, 'img_{}_{}.jpg'.format(i_episode, t + 1))
                 # self.check_and_save(path)
@@ -245,10 +257,12 @@ class IterCycleData:
         print("{} total samples collected, dataset size: {}, {}".format(total_samples, self.sample_n1, self.sample_n2))
 
     def collect_data(self, data_i, img):
-        self.norm_state()
-        self.pair_n = self.now_obs.shape[0]
-        assert (self.pair_n == self.next_obs.shape[0])
-        assert (self.pair_n == self.action.shape[0])
+        #if (data_i == 2):
+        #    import ipdb; ipdb.set_trace()
+        self.norm_state(img)
+        self.pair_n = len(self.now_obs)
+        assert (self.pair_n == len(self.next_obs))
+        assert (self.pair_n == len(self.action))
 
         if data_i == 1:
             mean, std = self.data1[-2:]
@@ -281,17 +295,18 @@ class IterCycleData:
                 self.data2[1] = action
                 self.data2[2] = nxt_obs
             else:
-                self.data2[0] = np.concatenate((self.data2[0], now_obs))
+                self.data2[0].extend(now_obs) # = np.concatenate((self.data2[0], now_obs))
                 self.data2[1] = np.concatenate((self.data2[1], action))
-                self.data2[2] = np.concatenate((self.data2[2], nxt_obs))
+                self.data2[2].extend(nxt_obs) # = np.concatenate((self.data2[2], nxt_obs))
             self.sample_n2 = self.data2[1].shape[0]
 
         return
 
 
-    def norm_state(self):
-        self.now_obs = np.vstack(self.now_obs)
-        self.next_obs = np.vstack(self.next_obs)
+    def norm_state(self, img):
+        if not img:
+            self.now_obs = np.vstack(self.now_obs)
+            self.next_obs = np.vstack(self.next_obs)
         self.action = np.vstack(self.action)
 
     def reset_buffer(self):
@@ -305,17 +320,16 @@ class IterCycleData:
         self.next_obs = []
         self.action = []
 
-    def add_image(self):
-        img = self.env.sim.render(mode='offscreen', camera_name='track', width=100, height=100, depth=False)
+    def add_image(self, img):
         img = Image.fromarray(img[::-1, :, :])
         img = transforms.ToTensor()(img)
         img = transforms.ToPILImage()(img)
-        img = self.trans_stack(img)
+        img = self.trans_stack(img) #.unsqueeze(0).numpy()
         self.imgs.append(img)
 
     def add_observation(self,observation,img):
         if img:
-            self.add_image()
+            self.add_image(observation)
         else:
             self.joint_pose_buffer.append(observation)
 
@@ -326,10 +340,13 @@ class IterCycleData:
         if img:
             self.now_obs += self.imgs[:-1]
             self.next_obs += self.imgs[1:]
+            self.action += self.action_buffer #[:-1]
+            if (len(self.now_obs) != len(self.action)):
+                import ipdb; ipdb.set_trace()
         else:
             self.now_obs += self.joint_pose_buffer[:-1]
             self.next_obs += self.joint_pose_buffer[1:]
-        self.action += self.action_buffer
+            self.action += self.action_buffer
 
         self.joint_pose_buffer = []
         self.achieved_goal_buffer = []

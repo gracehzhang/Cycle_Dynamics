@@ -82,7 +82,9 @@ class CycleData:
 
     def create_data(self):
         self.reset_buffer()
-        for i_episode in range(self.episode_n):
+        total_timesteps = 0
+        i_episode = 0
+        while (total_timesteps < self.episode_n):
             observation, done, t = self.env.reset(), False, 0
             self.add_observation(observation)
             episode_path = os.path.join(self.img_path,'episode-{}'.format(i_episode))
@@ -101,11 +103,13 @@ class CycleData:
                 path = os.path.join(episode_path, 'img_{}_{}.jpg'.format(i_episode, t + 1))
                 self.check_and_save(path)
                 t += 1
+                total_timesteps += 1
                 reward_r += reward
 
                 if done:
                     print("Episode {} finished after {} timesteps   reward:{}".format(i_episode,t,reward_r))
                     break
+            i_episode += 1
             self.merge_buffer()
 
         self.collect_data()
@@ -162,12 +166,12 @@ class CycleData:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='control dataset analyzer')
-    parser.add_argument("--env", default="HalfCheetah-v2")
+    parser.add_argument("--env", default="HalfCheetah-v3")
     parser.add_argument("--force", type=bool, default=False)
-    parser.add_argument("--log_root", default="../../../../logs/cross_modality")
+    parser.add_argument("--log_root", default="../../../logs/cross_modality")
     parser.add_argument('--data_type', type=str, default='base', help='data type')
     parser.add_argument('--data_id', type=int, default=4, help='data id')
-    parser.add_argument('--episode_n', type=int, default=400, help='episode number')
+    parser.add_argument('--episode_n', type=int, default=50000, help='episode number')
     opt = parser.parse_args()
 
     dataset = CycleData(opt)

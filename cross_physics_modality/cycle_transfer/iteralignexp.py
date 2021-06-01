@@ -77,7 +77,7 @@ def collect_data(opt, data_agent, model):
     data_agent.create_data(opt.source_env, 1, opt.episode_n, policy=policy_path)
 
     ### Target Dataset
-    data_agent.create_data(opt.env, 2, opt.episode_n, model=model)
+    data_agent.create_data(opt.env, 2, opt.episode_n, img=True, model=model)
 
 
 def train(args, data_agent, model, iter, best_reward, logs):
@@ -99,7 +99,7 @@ def train(args, data_agent, model, iter, best_reward, logs):
         start_id = end_id
         end_id = start_id + args.pair_n
         for batch_id in range(start_id,end_id):
-            print(iteration, batch_id)
+            # print(iteration, batch_id)
             item = data_agent.get_img_sample()
             data1,data2 = item
             model.set_input(item)
@@ -137,7 +137,7 @@ def train(args, data_agent, model, iter, best_reward, logs):
         start_id = end_id
         end_id = start_id + args.pair_n
         for batch_id in range(start_id,end_id):
-            item = data_agent.sample()
+            item = data_agent.get_img_sample()
             data1, data2 = item
             model.set_input(item)
             model.optimize_parameters()
@@ -184,7 +184,7 @@ def test(args, iter, logs):
         gxmodel=model.netG_B,
         axmodel=model.net_action_G_A,
         imgpath=img_logs,
-        eval_episodes=100)
+        eval_episodes=1000)
 
     txt_logs.write('Iteration: {}, Final Evaluation: {}, Success Rate: {}\n'.format(iter, reward, success_rate))
     txt_logs.flush()

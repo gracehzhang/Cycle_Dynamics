@@ -190,7 +190,7 @@ if __name__ == '__main__':
     parser.add_argument("--log_root", default="../../logs/cross_physics_modality")
     parser.add_argument('--data_type', type=str, default='base', help='data type')
     parser.add_argument('--data_id', type=int, default=1, help='data id')
-    parser.add_argument('--episode_n', type=int, default=20000, help='episode number')
+    parser.add_argument('--episode_n', type=int, default=50000, help='episode number')
     parser.add_argument('--load_policy', type=str, default="")
     opt = parser.parse_args()
 

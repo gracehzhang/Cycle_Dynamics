@@ -6,8 +6,8 @@ from pathos import multiprocessing
 import traceback
 import time
 
-which_gpus = [0,1]
-max_worker_num = 2
+which_gpus = [3]
+max_worker_num = 1
 source_envs = ["HalfCheetah-v3"]
 envs = ["gym_mod:GymHalfCheetahDM-v0"] #["gym_mod:GymFetchReach-v0"] #["gym_mod:GymHalfCheetahDM-v0","gym_mod:GymWalkerDM-v0"] #,"gym_mod:GymInvertedPendulumDM-v0"]
 state_dims = [17] #[16] #[17,17] #,4]
@@ -36,7 +36,7 @@ def run():
 
     for seed in seeds:
         for env, source_env, state_dim, action_dim in zip(envs, source_envs, state_dims, action_dims):
-            command = "python iteralignexp.py --data_type1 'base' --data_id1 {} --data_type2 {} --data_id2 {}  --seed {} --env {} --source_env {} --state_dim1={} --action_dim1={} --state_dim2={} --action_dim2={}".format(data_id, data_type, data_id, seed, env, source_env, state_dim, action_dim, state_dim, action_dim)
+            command = "python iteralignexp.py --finetune=True --log_root=../../finetune_logs/cross_morphology --data_type1 'base' --data_id1 {} --data_type2 {} --data_id2 {}  --seed {} --env {} --source_env {} --state_dim1={} --action_dim1={} --state_dim2={} --action_dim2={}".format(data_id, data_type, data_id, seed, env, source_env, state_dim, action_dim, state_dim, action_dim)
             print(command)
             process_pool.apply_async(
                 func=_worker,

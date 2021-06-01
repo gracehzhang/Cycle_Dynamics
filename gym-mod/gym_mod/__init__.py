@@ -136,12 +136,6 @@ register(
 )
 
 register(
-    id="GymHalfCheetahWeight-v0",
-    entry_point="gym_mod.gymenvs:GymHalfCheetahWeight",
-    max_episode_steps=1000,
-)
-
-register(
     id="GymHalfCheetahDM-v0",
     entry_point="gym_mod.gymenvs:GymHalfCheetahDM",
     max_episode_steps=1000,

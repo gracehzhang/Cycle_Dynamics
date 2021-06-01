@@ -20,7 +20,7 @@ class CycleGANModel():
     def __init__(self,opt):
         self.opt = opt
         self.isTrain = opt.istrain
-        self.Tensor = torch.cuda().FloatTensor
+        self.Tensor = torch.cuda.FloatTensor
 
         ### state dim, action dim?
 
