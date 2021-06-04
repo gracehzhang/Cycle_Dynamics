@@ -108,11 +108,8 @@ class ImgPolicy:
         self.episode_n = opt.episode_n
         self.policy_path = os.path.join(opt.log_root,
                         '{}_base/models/TD3_{}_0_actor'.format(opt.env,opt.env))
-        try:
-            self.policy = TD3(self.policy_path,self.state_dim,self.action_dim,self.max_action,opt)
-            print(self.policy_path)
-        except:
-            print('no pre-trained policy model weight!')
+        print(self.policy_path)   
+        self.policy = TD3(self.policy_path,self.state_dim,self.action_dim,self.max_action,opt)
 
     def online_test(self,imgmodel,episode_n=100):
         with torch.no_grad():

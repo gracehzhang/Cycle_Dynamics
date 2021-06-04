@@ -144,7 +144,7 @@ if __name__ == "__main__":
 	parser.add_argument("--save_model", default=True)               # Save model and optimizer parameters
 	parser.add_argument("--load_model", default="")                 # Model load file name, "" doesn't load, "default" uses file_name
 
-	parser.add_argument("--log_root", default="../../../../../logs/cross_modality")
+	parser.add_argument("--log_root", default="../../../../logs/cross_modality")
 	args = parser.parse_args()
 
 	main(args)
